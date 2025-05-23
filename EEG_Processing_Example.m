@@ -71,7 +71,6 @@ for fi = 1:length(eeg_files)
                 if pss>1 && pse<=nSamples                    
                     plot_hfo_event(eeg_time(pss:pse), ch_raw_signal(pss:pse), ch_bp_signal(pss:pse), freqs, wvlt_trnsfm(:, pss:pse), mss, mse)
                 end
-
             end
         end
     end
