@@ -32,9 +32,8 @@ for fi = 1:length(eeg_files)
         disp(strcat("Processing channel", eeg_ch));
 
         % Process the eeg signal from this channel
-        ch_raw_signal = mtg_data(chidx,:);
-        [freqs, wvlt_trnsfm] = get_signal_cwt(fs, ch_raw_signal);
-        ch_bp_signal = get_bandpassed_signal(fs, ch_raw_signal);
+        [freqs, wavelet_output] = get_signal_cwt(fs, mtg_data(chidx,:));
+        chann_bp_signal = get_bandpassed_signal(fs, mtg_data(chidx,:));
 
 
         % Select HFO events in this channel
@@ -43,36 +42,49 @@ for fi = 1:length(eeg_files)
         ch_hfo_events_start = hfo_dets.StartSample(sel_hfo);
         ch_hfo_events_end= hfo_dets.EndSample(sel_hfo);
 
-        % Loop through each hfo events from this channel
-        plot_ok = 1;
+        % Compute the features for each hfo
         for hfo_idx = 1:nr_ch_hfo
-            % Extract hfo event's signal and wavelet transform
             hfo_start = ch_hfo_events_start(hfo_idx);
-            hfo_end = ch_hfo_events_end(hfo_idx);
-            hfo_center = int32(mean([hfo_start, hfo_end]));
-            hfo_bp_signal = ch_bp_signal(hfo_start:hfo_end);
-            hfo_wavelet_trnsfm = wvlt_trnsfm(:, hfo_start:hfo_end);
-            hfo_time = eeg_time(hfo_start:hfo_end);
-
-            % Compute the features for each hfo event
-
-            % Max amplitude
-            max_amplitude = max(hfo_bp_signal)-min(hfo_bp_signal);
-
-            % Peak frequency
-            [max_val, max_idx] = max(mean(hfo_wavelet_trnsfm,2));
-            peak_freq = freqs(max_idx);
-
-            if plot_ok
-                pss = hfo_center-int32(fs/2);
-                pse= pss+fs-1;
-                mss = int32(fs/2)-(hfo_center-hfo_start);
-                mse = int32(fs/2)+(hfo_end-hfo_center);
-                if pss>1 && pse<=nSamples                    
-                    plot_hfo_event(eeg_time(pss:pse), ch_raw_signal(pss:pse), ch_bp_signal(pss:pse), freqs, wvlt_trnsfm(:, pss:pse), mss, mse)
-                end
-
-            end
+            
         end
+        x = 0;
     end
+
+
+    %% Apply FIR bandpass filter to first channel
+    chann_signal = mtg_data(1,:);
+    lw = 80; % low cutoff frequency in Hz
+    hw = 500; % high cutoff frequency in Hz
+    order = 256; % order must be a pair number
+    chann_signal_bandpassed = getBandpassedSignal(fs, order, lw, hw, chann_signal);
+    
+    %% Get the Morlet Wavelet transform from the first channel, time window of second 10 to 11
+    wavelet_low_freq_limit = 80;
+    wavelet_high_freq_limit = 500;
+    [cfs,frqs, coi] = cwt(chann_signal, 'amor', fs, 'FrequencyLimits',[wavelet_low_freq_limit wavelet_high_freq_limit]);
+    absCFS = abs(cfs);
+    
+    %% Plot raw, bandpassed and spectrogram from second 10 to 11
+    samples_selection = 10*fs:11*fs-1;
+    time_sel = eeg_time(samples_selection);
+    raw_sig_sel = chann_signal(samples_selection);
+    bp_sig_sel = chann_signal_bandpassed(samples_selection);
+    spect_sel = absCFS(:, samples_selection);
+    
+    figure(1)
+    subplot(3,1,1);
+    plot(time_sel, raw_sig_sel, '-k', 'LineWidth', 0.1)
+    title('Raw Signal')
+    ylabel("Voltage (uV)")
+    
+    subplot(3,1,2);
+    plot(time_sel, bp_sig_sel, '-k', 'LineWidth', 0.1)
+    title('Bandpassed Signal')
+    ylabel("Voltage (uV)")
+    
+    subplot(3,1,3);
+    contour(time_sel, frqs, spect_sel, 'LineStyle','none', 'LineColor',[0 0 0], 'Fill','on', 'Tag', 'heatmap');
+    title("Wavelet Transform")
+    ylabel("Frequency (Hz)")
+    xlabel("Time (s)")
 end
