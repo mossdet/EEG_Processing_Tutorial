@@ -20,6 +20,8 @@ function plot_hfo_event(time_vec, raw_sig, bp_sig, freqs, wvlt_trfm, mrk_sstart,
     ylabel("Frequency (Hz)")
     xlabel("Time (s)")
     xlim([time_vec(1),time_vec(end)])
-    close()
 
+    set(gcf,'units','normalized','outerposition',[0 0 1 1])
+    w = waitforbuttonpress;
+    close();
 end
